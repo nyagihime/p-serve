@@ -1,0 +1,12 @@
+{
+    "bottle": {
+        "port": 8080
+    },
+    "printer": {
+        "model": "QL-700",
+        "idVendor": "04f9",
+        "idProduct": "0x2042",
+        "iSerial": "000G1Z739259",
+        "threshold": 70
+    }
+}
