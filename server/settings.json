@@ -1,4 +1,7 @@
 {
+    "gui": {
+        "root": "../labelr-ez/dist"
+    },
     "bottle": {
         "port": 8080
     },

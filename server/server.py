@@ -8,10 +8,10 @@ from PIL import Image, ImageDraw
 # 設定用JSONのロード
 with open('settings.json', 'r', encoding='utf-8') as cf: SETTINGS = json.load(cf)
 
-# このファイルを起点として、相対パスでファイルを定義する
-path_here = Path(__file__)
-ROOT = path_here.parent
-VUE_DIST = f'{ROOT}/dist'
+# # このファイルを起点として、相対パスでファイルを定義する
+# path_here = Path(__file__)
+# ROOT = path_here.parent
+VUE_DIST = SETTINGS['gui']['root']
 
 # Bottle インスタンス作成
 server = Bottle()
@@ -45,11 +45,46 @@ def index():
 from brother_ql import BrotherQLRaster, create_label
 from brother_ql.backends import backend_factory, guess_backend
 
+from brother_ql.devicedependent import models, label_type_specs, label_sizes
+from brother_ql.devicedependent import ENDLESS_LABEL, DIE_CUT_LABEL, ROUND_DIE_CUT_LABEL
+
+from brother_ql.labels import FormFactor
+
 commonApiHeaders = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
 }
+
+# プリンターの状態を取得
+@server.get('/api/status')
+def get_printer_status():
+    printer_path = f"usb://{SETTINGS['printer']['idVendor']}:{SETTINGS['printer']['idProduct']}/{SETTINGS['printer']['iSerial']}"
+    selected_backend = guess_backend(printer_path)
+    backend_class = backend_factory(selected_backend)['backend_class']
+    http_status = 200
+
+    try:
+        backend = backend_class(printer_path)
+        backend.dispose()
+
+        response_msg = {
+            'status': 'ok',
+            'message': 'Printer is ready.'
+        }
+    except Exception as e:
+        http_status = 500
+        response_msg = {
+            'status': 'error',
+            'message': str(e)
+        }
+
+    res = HTTPResponse(
+        status=http_status,
+        body=json.dumps(response_msg, ensure_ascii=False, indent=2),
+        headers=commonApiHeaders
+    )
+    return res
 
 # ラベルサイズの一覧を返す
 @server.get('/api/help/size')
@@ -57,7 +92,15 @@ def get_supported_label_sizes():
     data = {
         'status': 'ok',
         'message': 'supported label sizes.',
-        'data': []
+        'data': [ ({
+            "size": size,
+            "name": label_type_specs[size]['name'],
+            "kind": (label_type_specs[size]['kind'] == ENDLESS_LABEL and 'endless') or (label_type_specs[size]['kind'] == DIE_CUT_LABEL and 'die-cut') or (label_type_specs[size]['kind'] == ROUND_DIE_CUT_LABEL and 'round-die-cut'),
+            "printable_px": {
+                "width": label_type_specs[size]['dots_printable'][0],
+                "height": label_type_specs[size]['dots_printable'][1]
+            }
+        }) for size in label_sizes ]
     }
 
     res = HTTPResponse(
@@ -101,6 +144,8 @@ def print_req():
     selected_backend = guess_backend(printer_path)
     backend_class = backend_factory(selected_backend)['backend_class']
 
+    http_status = 200
+
     try:
         backend = backend_class(printer_path)
         backend.write(qlr.data)
@@ -111,17 +156,25 @@ def print_req():
             'message': 'your request is accepted.'
         }
     except Exception as e:
+        http_status = 500
         response_msg = {
             'status': 'error',
             'message': str(e)
         }
 
     res = HTTPResponse(
-        status=200,
+        status=http_status,
         body=json.dumps(response_msg, ensure_ascii=False, indent=2),
         headers=commonApiHeaders
     )
     return res
 
 if __name__ == '__main__':
-    server.run(host='0.0.0.0', port=SETTINGS['bottle']['port'], debug=True, reloader=True)
+    server.run(
+        host='0.0.0.0',
+        server='gunicorn',
+        workers=2,
+        port=SETTINGS['bottle']['port'],
+        debug=True,
+        reloader=True
+    )
