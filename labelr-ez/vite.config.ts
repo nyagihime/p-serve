@@ -24,10 +24,16 @@ export default defineConfig({
       ],
       dts: './auto-import.d.ts'
     }),
-    ViteWebfontDownload([
+    ViteWebfontDownload(
+    [
       'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@100;300;400;700&display=swap',
       'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200'
-    ])
+    ],
+    {
+      injectAsStyleTag: true,
+      async: true,
+      cache: true
+    })
   ],
   resolve: {
     alias: {
