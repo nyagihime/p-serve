@@ -1,0 +1,15 @@
+{
+    "gui": {
+        "root": "../labelr-ez/dist"
+    },
+    "bottle": {
+        "port": 8080
+    },
+    "printer": {
+        "model": "",
+        "idVendor": "",
+        "idProduct": "",
+        "iSerial": "",
+        "threshold": 70
+    }
+}
